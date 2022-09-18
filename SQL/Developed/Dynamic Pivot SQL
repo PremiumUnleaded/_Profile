@@ -1,0 +1,35 @@
+--The code below can be altered to use in a dynamic pivot.
+
+--The example will aggregate OrderSalesAMT for each SalesPerson by ClientID.
+ 
+--Use DynCol to single out what you want to pivot into your columns.
+--Use SelectStmnt to query the data you want to pivot!
+
+--You could insert your results into a temp table for future queries.
+
+	use SalesDB
+	GO
+
+	declare @DynCol as nvarchar(max)
+	declare @SelectStmnt as nvarchar(max)
+
+	set @DynCol = STUFF((SELECT distinct ',' + QUOTENAME(SalesPerson) 
+                        From SalesData
+                        where 1=1
+		    FOR XML PATH(''), TYPE
+		    ).value('.', 'NVARCHAR(MAX)') 
+		,1,1,'')
+
+	set @SelectStmnt = 
+  'Select * 
+    From(
+                  Select ClientID, SalesPerson, OrderSalesAMT
+                  From SalesData
+	)re
+	pivot
+	(
+	sum([OrderSalesAMT])
+	for SalesPerson in (' + @DynCol + ')
+	)piv'
+
+	exec sp_executesql @SelectStmnt
